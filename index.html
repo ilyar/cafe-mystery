@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тайна Ночного Кафе</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Source+Sans+Pro:wght@300;400;600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Source Sans Pro', sans-serif;
+            background: #0a0a0a;
+            color: #e8e4dc;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 30px;
+        }
+        
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        
+        .game-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            color: #d4af37;
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+            letter-spacing: 3px;
+        }
+        
+        .inventory {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .inventory-item {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            background: rgba(20, 15, 10, 0.8);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .inventory-item:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+        }
+        
+        .dialogue-box {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 800px;
+            background: linear-gradient(135deg, rgba(15, 12, 8, 0.95), rgba(30, 22, 15, 0.9));
+            border: 1px solid #d4af37;
+            border-radius: 15px;
+            padding: 25px 35px;
+            pointer-events: auto;
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+            transition: all 0.4s ease-out;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(212, 175, 55, 0.1);
+        }
+        
+        .dialogue-box.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        .speaker-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            color: #d4af37;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .speaker-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #d4af37;
+            background: linear-gradient(135deg, #2a2015, #1a1510);
+        }
+        
+        .dialogue-text {
+            font-size: 17px;
+            line-height: 1.7;
+            color: #c8c4bc;
+            margin-bottom: 20px;
+            min-height: 60px;
+        }
+        
+        .choices {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .choice-btn {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05));
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            color: #e8e4dc;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.3s;
+            font-family: 'Source Sans Pro', sans-serif;
+        }
+        
+        .choice-btn:hover {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(212, 175, 55, 0.15));
+            border-color: #d4af37;
+            transform: translateX(5px);
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+        }
+        
+        .npc-status {
+            position: absolute;
+            top: 50%;
+            right: 40px;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: none;
+        }
+        
+        .npc-card {
+            background: rgba(15, 12, 8, 0.85);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            width: 200px;
+            opacity: 0;
+            transform: translateX(20px);
+            transition: all 0.4s ease-out;
+        }
+        
+        .npc-card.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        .npc-card-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 16px;
+            color: #d4af37;
+            margin-bottom: 8px;
+        }
+        
+        .npc-card-relation {
+            font-size: 13px;
+            color: #8a847a;
+        }
+        
+        .relation-bar {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        
+        .relation-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #8b4513, #d4af37);
+            border-radius: 2px;
+            transition: width 0.5s ease-out;
+        }
+        
+        .intro-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, #1a1510 0%, #0a0806 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: opacity 1s ease-out;
+        }
+        
+        .intro-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .intro-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 56px;
+            color: #d4af37;
+            text-shadow: 0 0 40px rgba(212, 175, 55, 0.4);
+            margin-bottom: 20px;
+            letter-spacing: 8px;
+        }
+        
+        .intro-subtitle {
+            font-size: 18px;
+            color: #8a847a;
+            letter-spacing: 4px;
+            margin-bottom: 50px;
+        }
+        
+        .start-btn {
+            font-family: 'Playfair Display', serif;
+            font-size: 18px;
+            color: #d4af37;
+            background: transparent;
+            border: 2px solid #d4af37;
+            padding: 15px 50px;
+            border-radius: 30px;
+            cursor: pointer;
+            letter-spacing: 3px;
+            transition: all 0.4s;
+        }
+        
+        .start-btn:hover {
+            background: rgba(212, 175, 55, 0.15);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+            transform: scale(1.05);
+        }
+        
+        .notification {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(30, 22, 15, 0.95));
+            border: 2px solid #d4af37;
+            border-radius: 15px;
+            padding: 30px 50px;
+            text-align: center;
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.5s;
+        }
+        
+        .notification.visible {
+            opacity: 1;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(212, 175, 55, 0.6); }
+        }
+        
+        .notification-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            color: #d4af37;
+        }
+        
+        .hint-text {
+            position: absolute;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            color: #5a554d;
+            letter-spacing: 2px;
+            opacity: 0.7;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #d4af37;
+            font-size: 18px;
+            letter-spacing: 3px;
+        }
+
+        .click-hint {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #6a655d;
+            font-size: 13px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .click-hint.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="canvas-container"></div>
+        
+        <div class="intro-screen" id="intro">
+            <div class="intro-title">ТАЙНА</div>
+            <div class="intro-subtitle">НОЧНОГО КАФЕ</div>
+            <button class="start-btn" onclick="startGame()">НАЧАТЬ</button>
+        </div>
+        
+        <div id="ui-overlay">
+            <div class="top-bar">
+                <div class="game-title">ТАЙНА НОЧНОГО КАФЕ</div>
+                <div class="inventory" id="inventory"></div>
+            </div>
+            
+            <div class="npc-status" id="npc-status"></div>
+            
+            <div class="dialogue-box" id="dialogue-box">
+                <div class="speaker-name">
+                    <div class="speaker-avatar"></div>
+                    <span id="speaker-name">Имя</span>
+                </div>
+                <div class="dialogue-text" id="dialogue-text">Текст диалога...</div>
+                <div class="choices" id="choices"></div>
+            </div>
+            
+            <div class="click-hint" id="click-hint">Кликните на персонажа для разговора</div>
+        </div>
+        
+        <div class="notification" id="notification">
+            <div class="notification-text" id="notification-text"></div>
+        </div>
+        
+        <div class="loading" id="loading">ЗАГРУЗКА...</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+    <script>
+        // Game State
+        let scene, camera, renderer, clock;
+        let npcs = [];
+        let selectedNPC = null;
+        let gameStarted = false;
+        
+        const gameState = {
+            relationships: {},
+            inventory: [],
+            cluesFound: 0,
+            talkedTo: {},
+            day: 1,
+            ending: null
+        };
+        
+        // NPC Data
+        const npcData = {
+            elena: {
+                name: "Элена",
+                color: 0xd4a574,
+                position: { x: -2, y: 0, z: 1 },
+                personality: "загадочная",
+                dialogueTree: {
+                    intro: {
+                        text: "Одна посетительница в углу поднимает взгляд от книги. Её глаза цвета янтаря изучают вас с любопытством.",
+                        choices: [
+                            { text: "Подойти и поздороваться", next: "greeting" },
+                            { text: "Притвориться, что не заметил", next: "ignore" }
+                        ]
+                    },
+                    greeting: {
+                        text: "Вы присели за соседний столик. 'Вы здесь часто бываете?' — спрашивает она, закрывая книгу. — 'Я Элена. Странно видеть новые лица в такое время...'",
+                        choices: [
+                            { text: "'А почему такое время считается странным?'", next: "curious", relation: 10 },
+                            { text: "'Просто зашёл выпить кофе'", next: "dismissive", relation: -5 }
+                        ]
+                    },
+                    ignore: {
+                        text: "Вы сели за барную стойку. Через несколько минут Элена сама подходит к вам.",
+                        choices: [
+                            { text: "Слушать", next: "surprise_approach" }
+                        ]
+                    },
+                    surprise_approach: {
+                        text: "'Вы избегаете людей?' — её голос мягкий, но в нём слышится вызов. — 'Я заметила. Но в этом кафе никто не приходит просто так.'",
+                        choices: [
+                            { text: "'Вы правы. Я ищу кое-что'", next: "reveal", relation: 15 },
+                            { text: "'Просто хотел спокойствия'", next: "dismissive2", relation: -10 }
+                        ]
+                    },
+                    curious: {
+                        text: "'Это кафе... особенное', — она понижает голос. — 'По ночам здесь встречаются люди, которые ищут что-то. Что-то конкретное.'",
+                        choices: [
+                            { text: "'Что именно они ищут?'", next: "secret", relation: 20 },
+                            { text: "Сменить тему", next: "change_topic" }
+                        ]
+                    },
+                    reveal: {
+                        text: "Элена кивает, как будто ожидала этого ответа. 'Я так и думала. У меня есть информация, но...' она смотрит на ваши руки. 'Ты принес что-нибудь ценное?'",
+                        effect: { clue: "старинный ключ" },
+                        choices: [
+                            { text: "Показать найденный ключ", next: "key_found", requires: "ключ" },
+                            { text: "'У меня ничего нет'", next: "no_item", relation: -5 }
+                        ]
+                    },
+                    key_found: {
+                        text: "Её глаза расширяются. 'Это... ключ от подвала! Там хранится то, что ищут многие. Но туда ведёт только один путь...' она рисует на салфетке схему.",
+                        effect: { addItem: "схема подвала", clue: "схема" },
+                        choices: [
+                            { text: "Спросить подробности", next: "basement_info", relation: 25 }
+                        ]
+                    },
+                    basement_info: {
+                        text: "'Подвал находится за барной стойкой. Чтобы попасть туда, нужно знать код. Ищи на стене картину с совой...'",
+                        choices: [
+                            { text: "Запомнить и уйти", next: "end_conversation" }
+                        ]
+                    },
+                    secret: {
+                        text: "Она наклоняется ближе. 'Здесь ходят слухи об одном человеке... основателе кафе. Говорят, он спрятал что-то ценное перед смертью.'",
+                        choices: [
+                            { text: "Узнать больше", next: "founder_story", relation: 15 }
+                        ]
+                    },
+                    founder_story: {
+                        text: "'Его звали Маркус. Он был коллекционером. Его коллекция... она где-то здесь, в здании. Но где — никто не знает.'",
+                        choices: [
+                            { text: "Как вы узнали об этом?", next: "how_know", relation: 10 },
+                            { text: "Спасибо за информацию", next: "end_conversation" }
+                        ]
+                    },
+                    how_know: {
+                        text: "'Я... работала здесь раньше. До того, как он исчез.' В её глазах мелькает что-то тёмное. 'Многое знаю. Но не всё расскажу даром.'",
+                        choices: [
+                            { text: "Что вам нужно?", next: "her_deal", relation: 5 }
+                        ]
+                    },
+                    her_deal: {
+                        text: "'Помоги мне найти одну вещь. Она была в коллекции Маркуса — золотая брошь с изображением луны. Найдёшь — расскажу всё остальное.'",
+                        effect: { quest: "найти брошь" },
+                        choices: [
+                            { text: "Согласиться", next: "quest_accepted", relation: 20 },
+                            { text: "Отказаться", next: "quest_refused", relation: -10 }
+                        ]
+                    },
+                    quest_accepted: {
+                        text: "'Хорошо. Начни с поисков в задней комнате. Там много коробок с вещами Маркуса.'",
+                        choices: [
+                            { text: "Отправиться на поиски", next: "end_conversation" }
+                        ]
+                    },
+                    quest_refused: {
+                        text: "Элена холодно улыбается. 'Тогда ты многого не узнаешь. Но выбор за тобой.'",
+                        choices: [
+                            { text: "Уйти", next: "end_conversation" }
+                        ]
+                    },
+                    end_conversation: {
+                        text: "Элена возвращается к своей книге. Вы чувствуете, что узнали что-то важное.",
+                        choices: [
+                            { text: "Отойти", next: null }
+                        ]
+                    }
+                }
+            },
+            marco: {
+                name: "Марко",
+                color: 0x8b6914,
+                position: { x: 2, y: 0, z: -1 },
+                personality: "внимательный",
+                dialogueTree: {
+                    intro: {
+                        text: "Бармен — худощавый мужчина с сединой в волосах — протирает стаканы. Его движения точны и выверены.",
+                        choices: [
+                            { text: "Заказать напиток", next: "order" },
+                            { text: "Спросить о кафе", next: "about_cafe" }
+                        ]
+                    },
+                    order: {
+                        text: "'Что будете?' — его голос низкий, немного хриплый. — 'У нас хороший кофе. И не только.'",
+                        choices: [
+                            { text: "'Кофе, пожалуйста'", next: "coffee", relation: 5 },
+                            { text: "'Что ещё есть?'", next: "special", relation: 10 }
+                        ]
+                    },
+                    coffee: {
+                        text: "Он молча кивает и начинает готовить кофе. 'Вы здесь впервые?' — спрашивает он, не глядя на вас.",
+                        choices: [
+                            { text: "'Да. Интересное место'", next: "curious", relation: 10 },
+                            { text: "'Да'", next: "short", relation: 0 }
+                        ]
+                    },
+                    curious: {
+                        text: "'Многое повидал за эти годы', — он ставит чашку перед вами. — 'Люди приходят сюда с разными целями. Большинство — ищут что-то.'",
+                        choices: [
+                            { text: "'Что именно?'", next: "seekers", relation: 15 },
+                            { text: "Пить кофе молча", next: "silence" }
+                        ]
+                    },
+                    seekers: {
+                        text: "Марко усмехается. 'Кто — деньги. Кто — ответы. Кто — людей. А некоторые...' он смотрит на потолок, '...тех, кого уже не вернуть.'",
+                        choices: [
+                            { text: "'Вы говорите загадками'", next: "riddle", relation: 5 },
+                            { text: "'Это про основателя?'", next: "founder_q", relation: 20 }
+                        ]
+                    },
+                    founder_q: {
+                        text: "Его лицо меняется — на мгновение проступает боль. 'Ты знаешь о Маркусе? Тогда ты пришёл по правильному адресу.'",
+                        choices: [
+                            { text: "Расскажите о нём", next: "marco_story", relation: 25 }
+                        ]
+                    },
+                    marco_story: {
+                        text: "'Он был моим другом. И моим учителем. Я работал здесь ещё при его жизни. Перед смертью он что-то спрятал. Сказал — тому, кто найдёт — будет награда.'",
+                        choices: [
+                            { text: "'Где искать?'", next: "where_hide", relation: 30 },
+                            { text: "Это было давно", next: "too_old", relation: -5 }
+                        ]
+                    },
+                    where_hide: {
+                        text: "'Подвал', — шепчет он. — 'Но туда не так просто попасть. Нужен ключ и код. Код... это дата. Дата открытия этого кафе.'",
+                        effect: { clue: "код подвала" },
+                        choices: [
+                            { text: "'Какая дата?'", next: "date", relation: 20 },
+                            { text: "Сам найду", next: "end_conv" }
+                        ]
+                    },
+                    date: {
+                        text: "'15 марта 1987'. Запиши это, если память подводит. И Маркус... он оставил одну вещь. Для особенного человека.'",
+                        effect: { addItem: "дата открытия" },
+                        choices: [
+                            { text: "Запомнить", next: "end_conv" }
+                        ]
+                    },
+                    about_cafe: {
+                        text: "'Это кафе существует с 1987 года', — Марко кивает на стену, где висят старые фотографии. — 'Многое изменилось. Но дух остался.'",
+                        choices: [
+                            { text: "Рассмотреть фотографии", next: "photos", relation: 10 },
+                            { text: "Спросить о фотографиях", next: "photos_detail", relation: 15 }
+                        ]
+                    },
+                    photos: {
+                        text: "Среди фотографий вы замечаете одну — мужчина с печальными глазами стоит у барной стойки. Рядом табличка с датой '15.03.1987'.",
+                        effect: { clue: "фотография основателя" },
+                        choices: [
+                            { text: "'Это он?'", next: "that_him" }
+                        ]
+                    },
+                    that_him: {
+                        text: "'Маркус. Основатель. Гений и мечтатель.' В голосе Марко звучит уважение и грусть.",
+                        choices: [
+                            { text: "Что с ним случилось?", next: "what_happened", relation: 20 }
+                        ]
+                    },
+                    what_happened: {
+                        text: "'Однажды он просто исчез. Оставил записку: 'Иду искать'. Больше его никто не видел.'",
+                        choices: [
+                            { text: "Искал что-то конкретное?", next: "what_search", relation: 15 },
+                            { text: "Понятно", next: "end_conv" }
+                        ]
+                    },
+                    what_search: {
+                        text: "'Коллекцию. Редкие вещи со всего мира. Но он искал одну — ту, что так и не нашёл при жизни.'",
+                        effect: { clue: "недостающая вещь" },
+                        choices: [
+                            { text: "Какую?", next: "missing_item", relation: 20 }
+                        ]
+                    },
+                    missing_item: {
+                        text: "'Не знаю. Он никогда не говорил напрямую. Но я видел его записи... там упоминалось что-то о 'лунном свете'.'",
+                        choices: [
+                            { text: "Запомнить", next: "end_conv" }
+                        ]
+                    },
+                    special: {
+                        text: "Он наклоняется ближе. 'У нас есть особенный напиток. Готовлю только для особенных гостей.'",
+                        choices: [
+                            { text: "Попробовать", next: "special_drink", relation: 15 },
+                            { text: "В другой раз", next: "later" }
+                        ]
+                    },
+                    special_drink: {
+                        text: "Через минуту перед вами появляется коктейль с золотистым свечением. 'Называется «Память», — говорит Марко. — 'Помогает увидеть то, что скрыто.'",
+                        effect: { vision: "показать скрытую дверь" },
+                        choices: [
+                            { text: "Выпить", next: "drink_vision", relation: 30 },
+                            { text: "Нет, спасибо", next: "refuse_drink", relation: -5 }
+                        ]
+                    },
+                    drink_vision: {
+                        text: "Напиток обжигает горло. Вздрогнув, вы замечаете — за стеллажом с бутылками едва видна дверь. До этого её там не было.",
+                        effect: { addItem: "видение двери" },
+                        choices: [
+                            { text: "Спросить о двери", next: "door_question", relation: 25 }
+                        ]
+                    },
+                    door_question: {
+                        text: "Марко широко улыбается. 'Ты увидел. Значит, готов. Дверь ведёт в подвал. Но без ключа там делать нечего.'",
+                        choices: [
+                            { text: "Есть ключ", next: "have_key", requires: "ключ" },
+                            { text: "Где ключ?", next: "key_where" }
+                        ]
+                    },
+                    have_key: {
+                        text: "'Тогда ты можешь пройти. Но там... опасно. Маркус защитил свою коллекцию.'",
+                        effect: { unlock: "подвал" },
+                        choices: [
+                            { text: "Войти", next: "enter_basement" }
+                        ]
+                    },
+                    enter_basement: {
+                        text: "Марко нажимает на скрытую кнопку. Стеллаж отодвигается, открывая каменную лестницу вниз.",
+                        effect: { clue: "подвал открыт" },
+                        choices: [
+                            { text: "Спуститься", next: "basement_scene" }
+                        ]
+                    },
+                    end_conv: {
+                        text: "Марко возвращается к работе. Вы чувствуете на себе его взгляд.",
+                        choices: [
+                            { text: "Отойти", next: null }
+                        ]
+                    }
+                }
+            },
+            nina: {
+                name: "Нина",
+                color: 0xc9a27e,
+                position: { x: 0, y: 0, z: 2 },
+                personality: "нервная",
+                dialogueTree: {
+                    intro: {
+                        text: "Молодая женщина сидит в центре зала, нервно постукивая пальцами по столу. Её взгляд бегает по комнате.",
+                        choices: [
+                            { text: "Подойти", next: "approach" },
+                            { text: "Наблюдать издалека", next: "observe" }
+                        ]
+                    },
+                    approach: {
+                        text: "Нина вздрагивает, когда вы подходите. 'О, это вы... извините, я немного на нервах.'",
+                        choices: [
+                            { text: "'Что-то случилось?'", next: "what_worry", relation: 10 },
+                            { text: "'Можно присесть?'", next: "sit_down" }
+                        ]
+                    },
+                    what_worry: {
+                        text: "'Я жду... кого-то. Человека, который должен принести мне важную вещь.' Она нервно смотрит на входную дверь.",
+                        choices: [
+                            { text: "'Могу помочь?'", next: "help_offer", relation: 15 },
+                            { text: "Не вмешиваться", next: "not_interfere", relation: -5 }
+                        ]
+                    },
+                    help_offer: {
+                        text: "'Вы... вы можете помочь! Слушайте, мне нужно найти человека. Его зовут Сергей. Он должен был принести мне брошь — ту, что с луной.'",
+                        effect: { quest: "найти Сергея" },
+                        choices: [
+                            { text: "Как он выглядит?", next: "serg_look", relation: 20 },
+                            { text: "Это кажется подозрительным", next: "suspicious", relation: -10 }
+                        ]
+                    },
+                    serg_look: {
+                        text: "'Высокий, худой, всегда в чёрном. У него шрам на левой руке. Вы его встречали?'",
+                        choices: [
+                            { text: "Поискать в кафе", next: "search_cafe", relation: 25 },
+                            { text: "Не видел", next: "not_seen", relation: -5 }
+                        ]
+                    },
+                    search_cafe: {
+                        text: "Вы осматриваете кафе и замечаете подозрительного мужчину в углу.",
+                        effect: { found: "сергей" },
+                        choices: [
+                            { text: "Указать Нине", next: "show_serg", relation: 30 }
+                        ]
+                    },
+                    show_serg: {
+                        text: "'Вот он! Это Сергей! Но он... он выглядит странно. Что-то случилось?'",
+                        choices: [
+                            { text: "Узнать", next: "serg_status", relation: 15 }
+                        ]
+                    },
+                    serg_status: {
+                        text: "Вы подходите к Сергею. Он сидит неподвижно, уставившись в одну точку. 'Он... он мёртв?'",
+                        effect: { clue: "тело Сергея" },
+                        choices: [
+                            { text: "Проверить пульс", next: "check_pulse" },
+                            { text: "Отойти и позвать Марко", next: "call_marco" }
+                        ]
+                    },
+                    check_pulse: {
+                        text: "Нет, он дышит. Но... его глаза открыты и не моргают. Похоже на сон наяву.",
+                        effect: { clue: " Сергей в трансе" },
+                        choices: [
+                            { text: "Попытаться разбудить", next: "wake_him" },
+                            { text: "Оставить в покое", next: "leave_him" }
+                        ]
+                    },
+                    wake_him: {
+                        text: "Вы пытаетесь привести его в себя. Нина подходит сзади: 'Не надо! Он... он опасен, когда его беспокоят!'",
+                        effect: { clue: "Нина что-то скрывает" },
+                        choices: [
+                            { text: "Почему опасен?", next: "why_danger", relation: -10 },
+                            { text: "Извините", next: "leave_him" }
+                        ]
+                    },
+                    why_danger: {
+                        text: "Нина отступает. 'Он... он связан с Маркусом. Тем, кто ищет коллекцию... иногда не возвращаются.'",
+                        effect: { clue: " Нина знает больше" },
+                        choices: [
+                            { text: "Расскажите всё", next: "tell_all", relation: 25 }
+                        ]
+                    },
+                    tell_all: {
+                        text: "'Я работала на Маркуса. До того, как он исчез. Он нашёл что-то... что-то, что изменило его. После этого люди начали пропадать.'",
+                        choices: [
+                            { text: "Что он нашёл?", next: "what_found", relation: 30 }
+                        ]
+                    },
+                    what_found: {
+                        text: "'Не знаю точно. Но это было связано с подвалом. Там что-то есть. Что-то... нехорошее.' Она достаёт из кармана предмет. 'Возьми. Это поможет.'",
+                        effect: { addItem: "амулет защиты" },
+                        choices: [
+                            { text: "Взять", next: "take_amulet" }
+                        ]
+                    },
+                    take_amulet: {
+                        text: "Это старинный медальон с символом глаза. 'Не снимай его в подвале', — говорит Нина. — 'Там темно. И не все, кто туда вошёл, вышли обратно.'",
+                        choices: [
+                            { text: "Идти в подвал", next: "go_basement" }
+                        ]
+                    },
+                    go_basement: {
+                        text: "Вы направляетесь к двери подвала. Теперь вы готовы.",
+                        effect: { trigger: "go_to_basement" },
+                        choices: [
+                            { text: "Отправиться", next: "end_conv" }
+                        ]
+                    },
+                    observe: {
+                        text: "Вы наблюдаете за Ниной издалека. Через несколько минут она встаёт и направляется к бару, бормоча что-то себе под нос.",
+                        choices: [
+                            { text: "Подойти", next: "approach" }
+                        ]
+                    },
+                    sit_down: {
+                        text: "Она неохотно кивает. 'Как хочешь. Но лучше не лезь в чужие дела.'",
+                        choices: [
+                            { text: "Извините", next: "apologize", relation: -5 }
+                        ]
+                    },
+                    apologize: {
+                        text: "'Ладно, извинения приняты.' Она чуть расслабляется. 'Меня зовут Нина. Я здесь из-за одной проблемы.'",
+                        choices: [
+                            { text: "Слушать", next: "problem", relation: 10 }
+                        ]
+                    },
+                    problem: {
+                        text: "'Человек должен мне вещь. Очень важную. Без неё... без неё мне не выбраться отсюда.'",
+                        choices: [
+                            { text: "От чего выбраться?", next: "escape", relation: 15 }
+                        ]
+                    },
+                    escape: {
+                        text: "Она смеётся, но в её смехе нет радости. 'Отсюда. Из этого кафе. Оно... оно не отпускает просто так.'",
+                        choices: [
+                            { text: "Что вы имеете в виду?", next: "cafe_trapped", relation: 20 }
+                        ]
+                    },
+                    cafe_trapped: {
+                        text: "'Это место необычное. Рано или поздно все здесь оказываются по какой-то причине. И либо находят то, что ищут, либо... остаются навсегда.'",
+                        choices: [
+                            { text: "Это угроза?", next: "threat", relation: -10 },
+                            { text: "Как выбраться?", next: "how_leave", relation: 25 }
+                        ]
+                    },
+                    how_leave: {
+                        text: "'Найди коллекцию Маркуса. Это ключ. Тот, кто её получит — получит свободу.'",
+                        effect: { clue: "коллекция = свобода" },
+                        choices: [
+                            { text: "Понял", next: "end_conv" }
+                        ]
+                    },
+                    not_interfere: {
+                        text: "Вы отошли. Через минуту Нина сама подходит к вам. 'Ты не из тех, кто лезет в чужое. Умно.'",
+                        relation: 10,
+                        choices: [
+                            { text: "Слушать", next: "problem" }
+                        ]
+                    },
+                    end_conv: {
+                        text: "Нина отворачивается. Вы чувствуете, что узнали важную информацию.",
+                        choices: [
+                            { text: "Отойти", next: null }
+                        ]
+                    }
+                }
+            }
+        };
+
+        // Initialize Three.js scene
+        function init() {
+            const container = document.getElementById('canvas-container');
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0806);
+            scene.fog = new THREE.Fog(0x0a0806, 5, 20);
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 3, 6);
+            camera.lookAt(0, 1, 0);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 2.5;
+            container.appendChild(renderer.domElement);
+            
+            // Clock
+            clock = new THREE.Clock();
+            
+            // Lighting
+            setupLighting();
+            
+            // Room
+            createRoom();
+            
+            // NPCs
+            createNPCs();
+            
+            // Post-processing feel with particles
+            createAmbientParticles();
+            
+            // Raycaster for interaction
+            window.raycaster = new THREE.Raycaster();
+            window.mouse = new THREE.Vector2();
+            
+            // Events
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('click', onMouseClick);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            
+            // Start animation
+            animate();
+            
+            // Hide loading
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        function setupLighting() {
+            // Ambient
+            const ambient = new THREE.AmbientLight(0x3a3020, 0.8);
+            scene.add(ambient);
+            
+            // Hemisphere light for general fill
+            const hemiLight = new THREE.HemisphereLight(0x4a3a25, 0x2a1a10, 0.7);
+            scene.add(hemiLight);
+            
+            // Main warm light (chandelier)
+            const mainLight = new THREE.SpotLight(0xe8c884, 5.0, 15, Math.PI / 3, 0.5, 1);
+            mainLight.position.set(0, 5, 0);
+            mainLight.castShadow = true;
+            mainLight.shadow.mapSize.width = 1024;
+            mainLight.shadow.mapSize.height = 1024;
+            scene.add(mainLight);
+            
+            // Warm accent lights
+            const accentPositions = [
+                { x: -4, z: 2, color: 0xe8c884 },
+                { x: 4, z: 2, color: 0xe8c884 },
+                { x: 0, z: -3, color: 0xd4af37 },
+                { x: -3, z: -2, color: 0xe8c884 },
+                { x: 3, z: -2, color: 0xe8c884 }
+            ];
+            
+            accentPositions.forEach(pos => {
+                const light = new THREE.PointLight(pos.color, 2.5, 12);
+                light.position.set(pos.x, 2.5, pos.z);
+                scene.add(light);
+            });
+            
+            // Candle lights
+            for (let i = 0; i < 5; i++) {
+                const candleLight = new THREE.PointLight(0xffaa55, 1.5, 5);
+                candleLight.position.set(
+                    Math.sin(i * 1.2) * 3,
+                    0.8,
+                    Math.cos(i * 1.2) * 2
+                );
+                scene.add(candleLight);
+            }
+            
+            // Extra fill light
+            const fillLight = new THREE.PointLight(0xc8b898, 2.0, 15);
+            fillLight.position.set(0, 3, 0);
+            scene.add(fillLight);
+        }
+        
+        function createRoom() {
+            // Floor - wooden
+            const floorGeo = new THREE.PlaneGeometry(12, 12);
+            const floorMat = new THREE.MeshStandardMaterial({
+                color: 0x2a1f15,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            
+            // Walls
+            const wallMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1510,
+                roughness: 0.95,
+                metalness: 0
+            });
+            
+            // Back wall
+            const backWall = new THREE.Mesh(new THREE.PlaneGeometry(12, 6), wallMat);
+            backWall.position.set(0, 3, -5);
+            scene.add(backWall);
+            
+            // Side walls
+            const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(12, 6), wallMat);
+            leftWall.position.set(-6, 3, 0);
+            leftWall.rotation.y = Math.PI / 2;
+            scene.add(leftWall);
+            
+            const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(12, 6), wallMat);
+            rightWall.position.set(6, 3, 0);
+            rightWall.rotation.y = -Math.PI / 2;
+            scene.add(rightWall);
+            
+            // Ceiling with beams
+            const ceiling = new THREE.Mesh(
+                new THREE.PlaneGeometry(12, 12),
+                new THREE.MeshStandardMaterial({ color: 0x151008, roughness: 1 })
+            );
+            ceiling.position.y = 5;
+            ceiling.rotation.x = Math.PI / 2;
+            scene.add(ceiling);
+            
+            // Wooden beams
+            for (let i = -2; i <= 2; i++) {
+                const beam = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.2, 0.3, 12),
+                    new THREE.MeshStandardMaterial({ color: 0x1a120a, roughness: 0.8 })
+                );
+                beam.position.set(i * 2.5, 4.85, 0);
+                scene.add(beam);
+            }
+            
+            // Furniture - Tables
+            createTable(-2, 1, 0);
+            createTable(2, 1, 0);
+            createTable(0, 2, 0);
+            createTable(0, -2, 0);
+            
+            // Bar counter
+            const barGeo = new THREE.BoxGeometry(6, 1.2, 1.5);
+            const barMat = new THREE.MeshStandardMaterial({ color: 0x2a1f15, roughness: 0.7 });
+            const bar = new THREE.Mesh(barGeo, barMat);
+            bar.position.set(0, 0.6, -4);
+            bar.castShadow = true;
+            scene.add(bar);
+            
+            // Shelves with bottles
+            createShelves();
+            
+            // Chandelier
+            createChandelier();
+            
+            // Decorative items
+            createDecorations();
+        }
+        
+        function createTable(x, y, z) {
+            const tableGroup = new THREE.Group();
+            
+            // Table top
+            const topGeo = new THREE.CylinderGeometry(0.6, 0.6, 0.05, 16);
+            const topMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.6 });
+            const top = new THREE.Mesh(topGeo, topMat);
+            top.position.y = 0.75;
+            top.castShadow = true;
+            tableGroup.add(top);
+            
+            // Leg
+            const legGeo = new THREE.CylinderGeometry(0.05, 0.08, 0.75, 8);
+            const leg = new THREE.Mesh(legGeo, topMat);
+            leg.position.y = 0.375;
+            tableGroup.add(leg);
+            
+            // Base
+            const baseGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.03, 16);
+            const base = new THREE.Mesh(baseGeo, topMat);
+            base.position.y = 0.015;
+            tableGroup.add(base);
+            
+            // Chair
+            const chairGroup = new THREE.Group();
+            const seatGeo = new THREE.BoxGeometry(0.4, 0.05, 0.4);
+            const chairMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.7 });
+            const seat = new THREE.Mesh(seatGeo, chairMat);
+            seat.position.y = 0.45;
+            chairGroup.add(seat);
+            
+            const backGeo = new THREE.BoxGeometry(0.4, 0.5, 0.05);
+            const back = new THREE.Mesh(backGeo, chairMat);
+            back.position.set(0, 0.7, -0.175);
+            chairGroup.add(back);
+            
+            // Chair legs
+            for (let lx = -0.15; lx <= 0.15; lx += 0.3) {
+                for (let lz = -0.15; lz <= 0.15; lz += 0.3) {
+                    const cLeg = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.02, 0.02, 0.45),
+                        chairMat
+                    );
+                    cLeg.position.set(lx, 0.225, lz);
+                    chairGroup.add(cLeg);
+                }
+            }
+            
+            chairGroup.position.set(0, 0, 0.8);
+            tableGroup.add(chairGroup);
+            
+            tableGroup.position.set(x, y, z);
+            scene.add(tableGroup);
+        }
+        
+        function createShelves() {
+            const shelfMat = new THREE.MeshStandardMaterial({ color: 0x2a1f15, roughness: 0.8 });
+            
+            for (let x = -2.5; x <= 2.5; x += 1.25) {
+                const shelf = new THREE.Mesh(
+                    new THREE.BoxGeometry(1, 0.05, 0.3),
+                    shelfMat
+                );
+                shelf.position.set(x, 2, -4.5);
+                scene.add(shelf);
+                
+                // Bottles
+                for (let i = 0; i < 3; i++) {
+                    const bottleColor = [0x8b0000, 0xd4af37, 0x2f4f4f, 0x4a0080][Math.floor(Math.random() * 4)];
+                    const bottle = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.05, 0.06, 0.2, 8),
+                        new THREE.MeshStandardMaterial({ 
+                            color: bottleColor, 
+                            transparent: true, 
+                            opacity: 0.8,
+                            roughness: 0.3 
+                        })
+                    );
+                    bottle.position.set(x - 0.3 + i * 0.25, 2.15, -4.5);
+                    scene.add(bottle);
+                }
+            }
+        }
+        
+        function createChandelier() {
+            const chain = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.02, 0.02, 2),
+                new THREE.MeshStandardMaterial({ color: 0x8b6914, metalness: 0.8 })
+            );
+            chain.position.y = 4;
+            scene.add(chain);
+            
+            const chandelier = new THREE.Group();
+            
+            // Main body
+            const body = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.3, 0.4, 0.3, 8),
+                new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.6, roughness: 0.4 })
+            );
+            chandelier.add(body);
+            
+            // Arms
+            for (let i = 0; i < 6; i++) {
+                const arm = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.02, 0.02, 0.4),
+                    new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.6 })
+                );
+                arm.position.set(Math.cos(i * Math.PI / 3) * 0.3, -0.3, Math.sin(i * Math.PI / 3) * 0.3);
+                arm.rotation.x = Math.PI / 6;
+                arm.rotation.z = i * Math.PI / 3 - Math.PI / 2;
+                chandelier.add(arm);
+                
+                // Bulb
+                const bulb = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.05, 8, 8),
+                    new THREE.MeshStandardMaterial({ 
+                        color: 0xffcc66, 
+                        emissive: 0xffcc66, 
+                        emissiveIntensity: 0.5 
+                    })
+                );
+                bulb.position.set(
+                    Math.cos(i * Math.PI / 3) * 0.5,
+                    -0.5,
+                    Math.sin(i * Math.PI / 3) * 0.5
+                );
+                chandelier.add(bulb);
+            }
+            
+            chandelier.position.y = 3;
+            scene.add(chandelier);
+        }
+        
+        function createDecorations() {
+            // Pictures on wall
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.8 });
+            
+            const picturePositions = [
+                { x: -4, y: 2.5, z: -0.1, ry: Math.PI / 2 },
+                { x: 4, y: 2.5, z: -0.1, ry: -Math.PI / 2 },
+                { x: 0, y: 3, z: -4.9, ry: 0 }
+            ];
+            
+            picturePositions.forEach(pos => {
+                const frame = new THREE.Mesh(
+                    new THREE.BoxGeometry(1, 0.8, 0.05),
+                    frameMat
+                );
+                frame.position.set(pos.x, pos.y, pos.z);
+                frame.rotation.y = pos.ry;
+                scene.add(frame);
+            });
+            
+            // Plants
+            createPlant(-4.5, 0);
+            createPlant(4.5, 0);
+            createPlant(-3, -3);
+            
+            // Old clock
+            const clockBody = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.3, 0.3, 0.1, 32),
+                new THREE.MeshStandardMaterial({ color: 0x2a1f15, metalness: 0.5 })
+            );
+            clockBody.position.set(3, 3, -4.9);
+            scene.add(clockBody);
+        }
+        
+        function createPlant(x, z) {
+            const pot = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.2, 0.15, 0.3, 8),
+                new THREE.MeshStandardMaterial({ color: 0x4a3020, roughness: 0.9 })
+            );
+            pot.position.set(x, 0.15, z);
+            scene.add(pot);
+            
+            // Simple leaves
+            for (let i = 0; i < 5; i++) {
+                const leaf = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.15, 8, 8),
+                    new THREE.MeshStandardMaterial({ color: 0x2a4a20, roughness: 0.8 })
+                );
+                leaf.scale.y = 1.5;
+                leaf.position.set(
+                    x + Math.sin(i) * 0.1,
+                    0.5 + i * 0.1,
+                    z + Math.cos(i) * 0.1
+                );
+                scene.add(leaf);
+            }
+        }
+        
+        function createNPCs() {
+            Object.keys(npcData).forEach(key => {
+                const data = npcData[key];
+                const npc = createHumanoid(data.color, data.position);
+                npc.userData = {
+                    id: key,
+                    name: data.name,
+                    personality: data.personality,
+                    currentNode: 'intro',
+                    basePosition: { ...data.position },
+                    lookAtPlayer: true,
+                    talking: false,
+                    lastTalkTime: 0
+                };
+                npcs.push(npc);
+                scene.add(npc);
+                
+                // Initialize relationship
+                if (!gameState.relationships[key]) {
+                    gameState.relationships[key] = 50;
+                }
+                
+                gameState.talkedTo[key] = false;
+            });
+        }
+        
+        function createHumanoid(skinColor, position) {
+            const group = new THREE.Group();
+            
+            // Body
+            const bodyMat = new THREE.MeshStandardMaterial({ 
+                color: skinColor, 
+                roughness: 0.8,
+                metalness: 0.1
+            });
+            
+            const clothMat = new THREE.MeshStandardMaterial({ 
+                color: 0x1a1510, 
+                roughness: 0.9 
+            });
+            
+            // Head
+            const head = new THREE.Mesh(
+                new THREE.SphereGeometry(0.2, 16, 16),
+                bodyMat
+            );
+            head.position.y = 1.6;
+            head.castShadow = true;
+            group.add(head);
+            
+            // Face features
+            // Eyes
+            const eyeMat = new THREE.MeshStandardMaterial({ color: 0x2a2015 });
+            const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            
+            const leftEye = new THREE.Mesh(
+                new THREE.SphereGeometry(0.04, 8, 8),
+                eyeWhiteMat
+            );
+            leftEye.position.set(-0.08, 1.65, 0.15);
+            group.add(leftEye);
+            
+            const rightEye = new THREE.Mesh(
+                new THREE.SphereGeometry(0.04, 8, 8),
+                eyeWhiteMat
+            );
+            rightEye.position.set(0.08, 1.65, 0.15);
+            group.add(rightEye);
+            
+            // Pupils
+            const pupilMat = new THREE.MeshStandardMaterial({ color: 0x1a0a00 });
+            const leftPupil = new THREE.Mesh(
+                new THREE.SphereGeometry(0.02, 8, 8),
+                pupilMat
+            );
+            leftPupil.position.set(-0.08, 1.65, 0.17);
+            group.add(leftPupil);
+            
+            const rightPupil = new THREE.Mesh(
+                new THREE.SphereGeometry(0.02, 8, 8),
+                pupilMat
+            );
+            rightPupil.position.set(0.08, 1.65, 0.17);
+            group.add(rightPupil);
+            
+            // Hair
+            const hairMat = new THREE.MeshStandardMaterial({ 
+                color: 0x2a1a10, 
+                roughness: 0.9 
+            });
+            
+            // Different hair for different NPCs
+            const hairStyle = Math.floor(Math.random() * 3);
+            
+            if (hairStyle === 0) {
+                // Short hair
+                const hair = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.22, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+                    hairMat
+                );
+                hair.position.y = 1.7;
+                group.add(hair);
+            } else if (hairStyle === 1) {
+                // Medium hair
+                const hairTop = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.22, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+                    hairMat
+                );
+                hairTop.position.y = 1.72;
+                group.add(hairTop);
+                
+                const hairSide = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.08, 0.08, 0.3, 8),
+                    hairMat
+                );
+                hairSide.position.set(0, 1.4, -0.1);
+                group.add(hairSide);
+            } else {
+                // Long hair
+                const hairTop = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.23, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+                    hairMat
+                );
+                hairTop.position.y = 1.72;
+                group.add(hairTop);
+                
+                for (let i = -1; i <= 1; i++) {
+                    const strand = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.05, 0.05, 0.4, 8),
+                        hairMat
+                    );
+                    strand.position.set(i * 0.1, 1.2, -0.15);
+                    group.add(strand);
+                }
+            }
+            
+            // Torso
+            const torso = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.18, 0.22, 0.5, 8),
+                clothMat
+            );
+            torso.position.y = 1.05;
+            torso.castShadow = true;
+            group.add(torso);
+            
+            // Arms
+            const armGeo = new THREE.CylinderGeometry(0.055, 0.065, 0.4, 8);
+            
+            const leftArm = new THREE.Mesh(armGeo, clothMat);
+            leftArm.position.set(-0.3, 1.0, 0);
+            leftArm.rotation.z = 0.2;
+            group.add(leftArm);
+            
+            const rightArm = new THREE.Mesh(armGeo.clone(), clothMat);
+            rightArm.position.set(0.3, 1.0, 0);
+            rightArm.rotation.z = -0.2;
+            group.add(rightArm);
+            
+            // Hands
+            const handGeo = new THREE.SphereGeometry(0.06, 8, 8);
+            
+            const leftHand = new THREE.Mesh(handGeo, bodyMat);
+            leftHand.position.set(-0.38, 0.7, 0);
+            group.add(leftHand);
+            
+            const rightHand = new THREE.Mesh(handGeo, bodyMat);
+            rightHand.position.set(0.38, 0.7, 0);
+            group.add(rightHand);
+            
+            // Legs
+            const legGeo = new THREE.CylinderGeometry(0.07, 0.09, 0.5, 8);
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x151010, roughness: 0.9 });
+            
+            const leftLeg = new THREE.Mesh(legGeo, legMat);
+            leftLeg.position.set(-0.1, 0.35, 0);
+            group.add(leftLeg);
+            
+            const rightLeg = new THREE.Mesh(legGeo, legMat);
+            rightLeg.position.set(0.1, 0.35, 0);
+            group.add(rightLeg);
+            
+            group.position.set(position.x, position.y, position.z);
+            
+            return group;
+        }
+        
+        function createAmbientParticles() {
+            const particleCount = 100;
+            const positions = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 10;
+                positions[i * 3 + 1] = Math.random() * 4;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 10;
+            }
+            
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const material = new THREE.PointsMaterial({
+                color: 0xd4a574,
+                size: 0.03,
+                transparent: true,
+                opacity: 0.5,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const particles = new THREE.Points(geometry, material);
+            particles.userData.isParticles = true;
+            scene.add(particles);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function onMouseMove(event) {
+            window.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            window.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Check for hover
+            window.raycaster.setFromCamera(window.mouse, camera);
+            const intersects = window.raycaster.intersectObjects(scene.children, true);
+            
+            let hoveringNPC = false;
+            intersects.forEach(intersect => {
+                if (intersect.object.parent && intersect.object.parent.userData && intersect.object.parent.userData.id) {
+                    hoveringNPC = true;
+                }
+            });
+            
+            renderer.domElement.style.cursor = hoveringNPC ? 'pointer' : 'default';
+        }
+        
+        function onMouseClick(event) {
+            if (!gameStarted) return;
+            
+            window.raycaster.setFromCamera(window.mouse, camera);
+            const intersects = window.raycaster.intersectObjects(scene.children, true);
+            
+            let clickedNPC = null;
+            intersects.forEach(intersect => {
+                if (intersect.object.parent && intersect.object.parent.userData && intersect.object.parent.userData.id) {
+                    clickedNPC = intersect.object.parent;
+                }
+            });
+            
+            if (clickedNPC && clickedNPC.userData.id) {
+                startDialogue(clickedNPC.userData.id);
+            }
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
+            
+            // Animate NPCs
+            npcs.forEach((npc, index) => {
+                // Breathing animation
+                const breathScale = 1 + Math.sin(time * 2 + index) * 0.005;
+                npc.scale.y = breathScale;
+                
+                // Slight movement
+                npc.position.x = npc.userData.basePosition.x + Math.sin(time * 0.5 + index * 2) * 0.02;
+                
+                // Look at camera/player
+                if (npc.userData.lookAtPlayer && !npc.userData.talking) {
+                    const targetLook = new THREE.Vector3(camera.position.x, 1.5, camera.position.z);
+                    npc.lookAt(targetLook);
+                }
+                
+                // Idle head movement
+                const head = npc.children[0];
+                if (head) {
+                    head.rotation.y = Math.sin(time * 0.3 + index) * 0.1;
+                }
+            });
+            
+            // Animate particles
+            scene.children.forEach(child => {
+                if (child.userData && child.userData.isParticles) {
+                    const positions = child.geometry.attributes.position.array;
+                    for (let i = 0; i < positions.length; i += 3) {
+                        positions[i + 1] += Math.sin(time + positions[i]) * 0.001;
+                    }
+                    child.geometry.attributes.position.needsUpdate = true;
+                    child.rotation.y = time * 0.05;
+                }
+            });
+            
+            // Subtle camera movement
+            camera.position.x = Math.sin(time * 0.1) * 0.3;
+            camera.position.y = 3 + Math.sin(time * 0.15) * 0.1;
+            camera.lookAt(0, 1, 0);
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Dialogue System
+        function startDialogue(npcId) {
+            const npc = npcs.find(n => n.userData.id === npcId);
+            if (!npc) return;
+            
+            selectedNPC = npc;
+            npc.userData.talking = true;
+            
+            // Update NPC status
+            updateNPCStatus();
+            
+            // Show dialogue box
+            showDialogue(npcId, npcData[npcId].dialogueTree.intro);
+            
+            // Mark as talked to
+            gameState.talkedTo[npcId] = true;
+        }
+        
+        function showDialogue(npcId, node) {
+            const dialogueBox = document.getElementById('dialogue-box');
+            const speakerName = document.getElementById('speaker-name');
+            const dialogueText = document.getElementById('dialogue-text');
+            const choicesDiv = document.getElementById('choices');
+            
+            speakerName.textContent = npcData[npcId].name;
+            dialogueText.textContent = node.text;
+            
+            choicesDiv.innerHTML = '';
+            
+            if (node.choices) {
+                node.choices.forEach(choice => {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-btn';
+                    btn.textContent = choice.text;
+                    
+                    // Check if choice requires item
+                    const canChoose = !choice.requires || gameState.inventory.includes(choice.requires);
+                    
+                    if (canChoose) {
+                        btn.onclick = () => handleChoice(npcId, choice);
+                    } else {
+                        btn.style.opacity = '0.5';
+                        btn.textContent += ' (нужен предмет)';
+                    }
+                    
+                    choicesDiv.appendChild(btn);
+                });
+            }
+            
+            dialogueBox.classList.add('visible');
+            
+            // Apply relationship changes
+            if (node.relation) {
+                gameState.relationships[npcId] = Math.max(0, Math.min(100, gameState.relationships[npcId] + node.relation));
+                updateNPCStatus();
+            }
+            
+            // Apply effects
+            if (node.effect) {
+                applyEffect(node.effect);
+            }
+        }
+        
+        function handleChoice(npcId, choice) {
+            if (choice.next === null) {
+                endDialogue();
+                return;
+            }
+            
+            const tree = npcData[npcId].dialogueTree;
+            if (tree[choice.next]) {
+                showDialogue(npcId, tree[choice.next]);
+            }
+        }
+        
+        function endDialogue() {
+            const dialogueBox = document.getElementById('dialogue-box');
+            dialogueBox.classList.remove('visible');
+            
+            if (selectedNPC) {
+                selectedNPC.userData.talking = false;
+                selectedNPC.userData.lastTalkTime = clock.getElapsedTime();
+            }
+            
+            selectedNPC = null;
+        }
+        
+        function applyEffect(effect) {
+            if (effect.clue) {
+                gameState.cluesFound++;
+                showNotification(`Новая улика: ${effect.clue}`);
+            }
+            
+            if (effect.addItem) {
+                if (!gameState.inventory.includes(effect.addItem)) {
+                    gameState.inventory.push(effect.addItem);
+                    updateInventory();
+                    showNotification(`Получено: ${effect.addItem}`);
+                }
+            }
+            
+            if (effect.quest) {
+                showNotification(`Новое задание: ${effect.quest}`);
+            }
+            
+            if (effect.unlock === 'подвал') {
+                showNotification('Открыт доступ к подвалу!');
+            }
+            
+            if (effect.trigger === 'go_to_basement') {
+                showEnding();
+            }
+        }
+        
+        function updateInventory() {
+            const inventoryDiv = document.getElementById('inventory');
+            inventoryDiv.innerHTML = '';
+            
+            const icons = {
+                'ключ': '🔑',
+                'схема подвала': '📜',
+                'код подвала': '🔢',
+                'дата открытия': '📅',
+                'фотография основателя': '📷',
+                'амулет защиты': '🔮',
+                'видение двери': '👁',
+                'коллекция = свобода': '💎'
+            };
+            
+            gameState.inventory.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'inventory-item';
+                div.textContent = icons[item] || '📦';
+                div.title = item;
+                inventoryDiv.appendChild(div);
+            });
+        }
+        
+        function updateNPCStatus() {
+            const statusDiv = document.getElementById('npc-status');
+            statusDiv.innerHTML = '';
+            
+            npcs.forEach(npc => {
+                const relation = gameState.relationships[npc.userData.id];
+                const relationText = relation > 70 ? 'Дружелюбный' : relation > 40 ? 'Нейтральный' : 'Настороженный';
+                
+                const card = document.createElement('div');
+                card.className = 'npc-card';
+                card.innerHTML = `
+                    <div class="npc-card-name">${npc.userData.name}</div>
+                    <div class="npc-card-relation">${relationText}</div>
+                    <div class="relation-bar">
+                        <div class="relation-fill" style="width: ${relation}%"></div>
+                    </div>
+                `;
+                statusDiv.appendChild(card);
+                
+                setTimeout(() => card.classList.add('visible'), 100);
+            });
+        }
+        
+        function showNotification(text) {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notification-text');
+            
+            notificationText.textContent = text;
+            notification.classList.add('visible');
+            
+            setTimeout(() => {
+                notification.classList.remove('visible');
+            }, 3000);
+        }
+        
+        function showEnding() {
+            // End game - player goes to basement
+            const dialogueBox = document.getElementById('dialogue-box');
+            dialogueBox.innerHTML = `
+                <div class="speaker-name">Эпилог</div>
+                <div class="dialogue-text">
+                    Вы спускаетесь по каменной лестнице в подвал. За вами — история этого места, 
+                    отношения с его обитателями, и то, что вы узнали. Впереди — тайна коллекции Маркуса.
+                    <br><br>
+                    То, что вы найдёте там, изменит всё.
+                    <br><br>
+                    <em>Конец первой главы...</em>
+                </div>
+                <div class="choices">
+                    <button class="choice-btn" onclick="location.reload()">Начать заново</button>
+                </div>
+            `;
+            dialogueBox.classList.add('visible');
+            
+            // Remove NPC interaction
+            npcs.forEach(npc => {
+                npc.userData.lookAtPlayer = false;
+            });
+        }
+        
+        function startGame() {
+            gameStarted = true;
+            document.getElementById('intro').classList.add('hidden');
+            updateNPCStatus();
+            
+            // Show hint after a delay
+            setTimeout(() => {
+                document.getElementById('click-hint').classList.add('visible');
+            }, 2000);
+            
+            setTimeout(() => {
+                document.getElementById('click-hint').classList.remove('visible');
+            }, 8000);
+        }
+        
+        // Initialize on load
+        window.onload = init;
+    </script>
+</body>
+</html>
